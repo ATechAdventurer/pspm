@@ -53,7 +53,6 @@ export default class Install extends Command {
 
     let packagePath: string;
     // Check if install is a URL or a path
-    console.log(install);
     if (isGithubURL(install)) {
       // Check the .pspm.json to see if the package is already installed via URL
       if (pspmConfig.installed.some((installed) => installed.url === install)) {
@@ -155,33 +154,21 @@ export default class Install extends Command {
             printerDirectory,
             fileName,
           );
-          
+
           const replacedPath = installPath.replace(slicerPath.toString(), '');
-          console.log({
-            installPath,
-            slicerPath,
-            replacedPath
-          })
           installedManifest.ownedFiles.push(replacedPath);
           copyFileSync(filePath, installPath);
         }
         let foundFilePath = path.join(slicerPath.toString(), 'assets', printerDirectory, fileName);
-        if(os.platform() === "win32") {
-          foundFilePath = foundFilePath.replace(/\\/g, '//')
-          console.log(foundFilePath)
+        if (os.platform() === 'win32') {
+          foundFilePath = foundFilePath.replace(/\\/g, '//');
         }
         switch (fileName) {
           case 'bed.stl':
-            printerIniContent.set(
-              'bed_custom_model',
-               foundFilePath
-            );
+            printerIniContent.set('bed_custom_model', foundFilePath);
             break;
           case 'bed.png':
-            printerIniContent.set(
-              'bed_custom_texture',
-              foundFilePath
-            );
+            printerIniContent.set('bed_custom_texture', foundFilePath);
             break;
         }
       }
@@ -201,9 +188,7 @@ export default class Install extends Command {
       for (const filamentFile of filamentFiles) {
         const filamentWritePath = path.join(slicerPath.toString(), 'filament', filamentFile);
         const replacedPath = filamentWritePath.replace(slicerPath.toString(), '');
-        installedManifest.ownedFiles.push(
-          replacedPath
-        );
+        installedManifest.ownedFiles.push(replacedPath);
         copyFileSync(path.join(packagePath, 'filaments', filamentFile), filamentWritePath);
       }
     }

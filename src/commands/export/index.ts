@@ -5,7 +5,7 @@ import { getSlicerPath } from '../../helpers/os';
 
 export default class Export extends Command {
   static description = 'Export a set of Profiles, Printers, and Materials';
-
+  static hidden = true;
   async run() {
     const slicerPath = getSlicerPath();
     // Check the path exists
