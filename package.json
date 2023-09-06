@@ -2,7 +2,7 @@
   "name": "pspm",
   "version": "0.0.0",
   "description": "A simple package manager for Prusa Slicer",
-  "author": "Cameron Steele @ATechAdventurer",
+  "author": "Cameron Steele",
   "bin": {
     "pspm": "./bin/run"
   },
