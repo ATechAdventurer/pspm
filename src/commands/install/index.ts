@@ -18,6 +18,7 @@ import { getSlicerPath } from '../../helpers/os';
 import { defaultRecord } from '../../constants/record';
 import { isGithubURL } from '../../helpers/packages';
 import { Ini } from '../../helpers/ini';
+import os from 'node:os';
 
 export default class Install extends Command {
   static description = 'Install a package';
@@ -154,20 +155,32 @@ export default class Install extends Command {
             printerDirectory,
             fileName,
           );
-          installedManifest.ownedFiles.push(installPath.replace(slicerPath.toString() + '/', ''));
+          
+          const replacedPath = installPath.replace(slicerPath.toString(), '');
+          console.log({
+            installPath,
+            slicerPath,
+            replacedPath
+          })
+          installedManifest.ownedFiles.push(replacedPath);
           copyFileSync(filePath, installPath);
+        }
+        let foundFilePath = path.join(slicerPath.toString(), 'assets', printerDirectory, fileName);
+        if(os.platform() === "win32") {
+          foundFilePath = foundFilePath.replace(/\\/g, '//')
+          console.log(foundFilePath)
         }
         switch (fileName) {
           case 'bed.stl':
             printerIniContent.set(
               'bed_custom_model',
-              `${slicerPath.toString()}/assets/${printerDirectory}/bed.stl`,
+               foundFilePath
             );
             break;
           case 'bed.png':
             printerIniContent.set(
               'bed_custom_texture',
-              `${slicerPath.toString()}/assets/${printerDirectory}/bed.png`,
+              foundFilePath
             );
             break;
         }
@@ -178,7 +191,8 @@ export default class Install extends Command {
         'printer',
         `${printerDirectory}.ini`,
       );
-      installedManifest.ownedFiles.push(printerWritePath.replace(slicerPath.toString() + '/', ''));
+      const replacedPath = printerWritePath.replace(slicerPath.toString(), '');
+      installedManifest.ownedFiles.push(replacedPath);
       writeFileSync(printerWritePath, printerIniContent.toString());
     }
 
@@ -186,8 +200,9 @@ export default class Install extends Command {
     if (existsSync(path.join(packagePath, 'filaments'))) {
       for (const filamentFile of filamentFiles) {
         const filamentWritePath = path.join(slicerPath.toString(), 'filament', filamentFile);
+        const replacedPath = filamentWritePath.replace(slicerPath.toString(), '');
         installedManifest.ownedFiles.push(
-          filamentWritePath.replace(slicerPath.toString() + '/', ''),
+          replacedPath
         );
         copyFileSync(path.join(packagePath, 'filaments', filamentFile), filamentWritePath);
       }

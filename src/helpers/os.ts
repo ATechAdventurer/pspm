@@ -28,7 +28,5 @@ export function getSlicerPath(): PathLike {
     default:
       throw new Error(`Unsupported platform: ${osPlatform}`);
   }
-  return path.resolve(
-    slicerPath
-  );
+  return path.resolve(slicerPath);
 }

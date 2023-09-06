@@ -22,12 +22,14 @@ export default class Nuke extends Command {
         }
         const config = pspmConfigSchema.parse(JSON.parse(readFileSync(pspmPath).toString()));
 
-        const filesToDelete = [
-            ".pspm.json",
-        ];
+        const filesToDelete = [];
         for (const record of config.installed) {
             filesToDelete.push(...record.ownedFiles);
         }
+
+        filesToDelete.push(".pspm.json");
+
+
 
         const fileDeleteJob = filesToDelete.map((file) => rm(path.join(slicerPath.toString(), file)));
         await Promise.all(fileDeleteJob);
