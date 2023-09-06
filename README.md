@@ -14,30 +14,30 @@ oclif example Hello World CLI
 # Usage
 <!-- usage -->
 ```sh-session
-$ npm install -g @atechadventurer/pspm
-$ pspm COMMAND
+$ npm install -g pspm-cli
+$ pspm-cli COMMAND
 running command...
-$ pspm (--version)
-@atechadventurer/pspm/0.0.0 darwin-arm64 node-v18.11.0
-$ pspm --help [COMMAND]
+$ pspm-cli (--version)
+pspm-cli/0.0.0 darwin-arm64 node-v18.11.0
+$ pspm-cli --help [COMMAND]
 USAGE
-  $ pspm COMMAND
+  $ pspm-cli COMMAND
 ...
 ```
 <!-- usagestop -->
 # Commands
 <!-- commands -->
-* [`pspm help [COMMANDS]`](#pspm-help-commands)
-* [`pspm install INSTALL`](#pspm-install-install)
-* [`pspm nuke`](#pspm-nuke)
+* [`pspm-cli help [COMMANDS]`](#pspm-cli-help-commands)
+* [`pspm-cli install INSTALL`](#pspm-cli-install-install)
+* [`pspm-cli nuke`](#pspm-cli-nuke)
 
-## `pspm help [COMMANDS]`
+## `pspm-cli help [COMMANDS]`
 
-Display help for pspm.
+Display help for pspm-cli.
 
 ```
 USAGE
-  $ pspm help [COMMANDS] [-n]
+  $ pspm-cli help [COMMANDS] [-n]
 
 ARGUMENTS
   COMMANDS  Command to show help for.
@@ -46,18 +46,18 @@ FLAGS
   -n, --nested-commands  Include all nested commands in the output.
 
 DESCRIPTION
-  Display help for pspm.
+  Display help for pspm-cli.
 ```
 
 _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v5.2.19/src/commands/help.ts)_
 
-## `pspm install INSTALL`
+## `pspm-cli install INSTALL`
 
 Install a package
 
 ```
 USAGE
-  $ pspm install INSTALL
+  $ pspm-cli install INSTALL
 
 ARGUMENTS
   INSTALL  Path to install
@@ -66,24 +66,24 @@ DESCRIPTION
   Install a package
 
 EXAMPLES
-  $ pspm install
+  $ pspm-cli install
 ```
 
 _See code: [dist/commands/install/index.ts](https://github.com/ATechAdventurer/pspm/blob/v0.0.0/dist/commands/install/index.ts)_
 
-## `pspm nuke`
+## `pspm-cli nuke`
 
 Nuke all installed packages
 
 ```
 USAGE
-  $ pspm nuke
+  $ pspm-cli nuke
 
 DESCRIPTION
   Nuke all installed packages
 
 EXAMPLES
-  $ pspm nuke
+  $ pspm-cli nuke
 ```
 
 _See code: [dist/commands/nuke/index.ts](https://github.com/ATechAdventurer/pspm/blob/v0.0.0/dist/commands/nuke/index.ts)_

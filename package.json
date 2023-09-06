@@ -1,10 +1,10 @@
 {
-  "name": "pspm",
+  "name": "pspm-cli",
   "version": "0.0.0",
   "description": "A simple package manager for Prusa Slicer",
   "author": "Cameron Steele",
   "bin": {
-    "pspm": "./bin/run"
+    "pspm-cli": "./bin/run"
   },
   "homepage": "https://github.com/ATechAdventurer/pspm",
   "license": "MIT",
@@ -48,7 +48,7 @@
     "typescript": "^4.9.5"
   },
   "oclif": {
-    "bin": "pspm",
+    "bin": "pspm-cli",
     "dirname": "pspm",
     "commands": "./dist/commands",
     "plugins": [
