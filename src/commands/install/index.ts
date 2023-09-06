@@ -1,20 +1,31 @@
+import {
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  copyFileSync,
+  mkdirSync,
+  existsSync,
+  createWriteStream,
+} from 'node:fs';
+import path from 'node:path';
 import { Args, Command } from '@oclif/core';
-import { readFileSync, readdirSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from 'fs';
-import path from 'path';
-import { cwd } from 'process';
-import { pspmSchema } from '../../schemas/pspm.schema';
+
+import { z } from 'zod';
+import decompress from 'decompress';
+import axios from 'axios';
+import { pspmConfigSchema, pspmRecordSchema, pspmSchema } from '../../schemas/pspm.schema';
 import { getSlicerPath } from '../../helpers/os';
-import ini from 'ini';
+import { defaultRecord } from '../../constants/record';
+import { isGithubURL } from '../../helpers/packages';
+import { Ini } from '../../helpers/ini';
 
 export default class Install extends Command {
   static description = 'Install a package';
+
   static examples = [`$ <%= config.bin %> <%= command.id %>`];
+
   static args = {
-    // url: Args.url({
-    //   description: 'URL to install',
-    //   required: !true,
-    // }),
-    packagePath: Args.directory({
+    install: Args.string({
       description: 'Path to install',
       required: true,
     }),
@@ -22,9 +33,58 @@ export default class Install extends Command {
 
   async run(): Promise<void> {
     const { args } = await this.parse(Install);
-    const { packagePath } = args;
-    // const packagePath = path.join(cwd(), '../pspm-example');
-    // Check if packagePath exists
+    const { install } = args;
+
+    const slicerPath = getSlicerPath();
+    // Check the path exists
+    if (!slicerPath) {
+      this.error(`Slicer path does not exist: ${slicerPath}`);
+    }
+
+    // Check if a .pspm.json file exists in the slicerDirectory
+    const pspmPath = path.join(slicerPath.toString(), '.pspm.json');
+    if (!existsSync(pspmPath)) {
+      writeFileSync(pspmPath, JSON.stringify(defaultRecord));
+    }
+
+    // Get contenst of .pspm.json
+    const pspmConfig = pspmConfigSchema.parse(JSON.parse(readFileSync(pspmPath).toString()));
+
+    let packagePath: string;
+    // Check if install is a URL or a path
+    console.log(install);
+    if (isGithubURL(install)) {
+      // Check the .pspm.json to see if the package is already installed via URL
+      if (pspmConfig.installed.some((installed) => installed.url === install)) {
+        this.error(`Package is already installed: ${install}`);
+      }
+      const url = `${install.endsWith('/') ? install : install + '/'}archive/refs/heads/main.zip`;
+
+      mkdirSync(path.resolve(this.config.cacheDir, 'downloads'), { recursive: true });
+      const tmpDestination = path.resolve(this.config.cacheDir, 'downloads', 'temp.zip');
+      const unzipDestination = path.resolve(this.config.cacheDir, 'downloads');
+
+      const writer = createWriteStream(tmpDestination);
+
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'stream',
+      });
+
+      response.data.pipe(writer);
+
+      await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+      });
+
+      const files = await decompress(tmpDestination, unzipDestination);
+      packagePath = path.resolve(unzipDestination, files[0].path);
+    } else {
+      packagePath = path.resolve(install);
+    }
+
     if (!packagePath) {
       this.error(`Package path does not exist: ${packagePath}`);
     }
@@ -37,18 +97,13 @@ export default class Install extends Command {
       this.error(`No pspm.json file found in package path: ${packagePath}`);
     }
     // Check if a pspm.json file is valid
-    let packageManifest;
-    try {
-      packageManifest = pspmSchema.parse(
-        JSON.parse(readFileSync(path.join(packagePath, 'pspm.json')).toString()),
-      );
-    } catch (error) {
-      this.error(`Invalid pspm.json file: ${error}`);
-    }
+    const packageManifest = pspmSchema.parse(
+      JSON.parse(readFileSync(path.join(packagePath, 'pspm.json')).toString()),
+    );
     let printerDirectories: string[] = [];
     let filamentFiles: string[] = [];
     // Check if a printers directory exists
-    if (readdirSync(path.join(packagePath, 'printers'))) {
+    if (existsSync(path.join(packagePath, 'printers'))) {
       printerDirectories = readdirSync(path.join(packagePath, 'printers'), {
         withFileTypes: true,
       })
@@ -57,7 +112,7 @@ export default class Install extends Command {
       this.log(`Found ${printerDirectories.length} printers:`);
       this.log(printerDirectories.join('\n'));
     }
-    if (readdirSync(path.join(packagePath, 'filaments'))) {
+    if (existsSync(path.join(packagePath, 'filaments'))) {
       filamentFiles = readdirSync(path.join(packagePath, 'filaments'));
       this.log(`Found ${filamentFiles.length} filaments:`);
       this.log(filamentFiles.map((file) => file.replace('.ini', '')).join('\n'));
@@ -65,24 +120,21 @@ export default class Install extends Command {
 
     this.log(`Installing package from ${packageManifest.name}`);
 
-    const slicerPath = getSlicerPath();
-    // Check the path exists
-    if (!slicerPath) {
-      this.error(`Slicer path does not exist: ${slicerPath}`);
+    // Check if package is already installed
+    if (pspmConfig.installed.find((installed) => installed.name === packageManifest.name)) {
+      this.error(`Package is already installed: ${packageManifest.name}`);
     }
 
+    const installedManifest: z.infer<typeof pspmRecordSchema> = {
+      ...packageManifest,
+      ownedFiles: [],
+    };
     // Iterate over each printer directory
-    printerDirectories.forEach((printerDirectory) => {
+    for (const printerDirectory of printerDirectories) {
       const printerIniPath = path.join(packagePath, 'printers', printerDirectory, 'printer.ini');
-      const printerIniContent = readFileSync(printerIniPath, 'utf-8');
-
-      // Chqck if printer.ini is valid
-      let printerIni: Record<string, string>;
-      try {
-        printerIni = ini.parse(printerIniContent);
-      } catch (error) {
-        this.error(`Invalid printer.ini file: ${error}`);
-      }
+      const printerIniContent = new Ini(
+        readFileSync(printerIniPath, 'utf-8').replace(/\\n/g, '<TEMP_NEWLINE>'),
+      );
 
       const assetsPath = path.join(slicerPath.toString(), '/assets');
       if (!existsSync(assetsPath)) {
@@ -93,44 +145,57 @@ export default class Install extends Command {
       }
 
       // If files bed.stl and/or bed.png is found copy them to slicerPath/assets/<printerDirectory name>/base.stl/png
-      ['bed.stl', 'bed.png'].forEach((fileName) => {
+      for (const fileName of ['bed.stl', 'bed.png']) {
         const filePath = path.join(packagePath, 'printers', printerDirectory, fileName);
         if (readdirSync(path.join(packagePath, 'printers', printerDirectory)).includes(fileName)) {
-          copyFileSync(
-            filePath,
-            path.join(
-              slicerPath.toString(),
-              'assets',
-              printerDirectory,
-              `bed.${fileName.split('.')[1]}`,
-            ),
+          const installPath = path.join(
+            slicerPath.toString(),
+            'assets',
+            printerDirectory,
+            fileName,
           );
+          installedManifest.ownedFiles.push(installPath.replace(slicerPath.toString() + '/', ''));
+          copyFileSync(filePath, installPath);
         }
         switch (fileName) {
           case 'bed.stl':
-            printerIni[
-              'bed_custom_model'
-            ] = `${slicerPath.toString()}/assets/${printerDirectory}/bed.stl`;
+            printerIniContent.set(
+              'bed_custom_model',
+              `${slicerPath.toString()}/assets/${printerDirectory}/bed.stl`,
+            );
             break;
           case 'bed.png':
-            printerIni[
-              'bed_custom_texture'
-            ] = `${slicerPath.toString()}/assets/${printerDirectory}/bed.png`;
+            printerIniContent.set(
+              'bed_custom_texture',
+              `${slicerPath.toString()}/assets/${printerDirectory}/bed.png`,
+            );
             break;
         }
-      });
-      writeFileSync(
-        path.join(slicerPath.toString(), 'printer', `${printerDirectory}.ini`),
-        ini.stringify(printerIni),
+      }
+
+      const printerWritePath = path.join(
+        slicerPath.toString(),
+        'printer',
+        `${printerDirectory}.ini`,
       );
-    });
+      installedManifest.ownedFiles.push(printerWritePath.replace(slicerPath.toString() + '/', ''));
+      writeFileSync(printerWritePath, printerIniContent.toString());
+    }
 
     // Iterate over each filament file and copy it to slicerPath/filaments/<filamentName>.ini
-    filamentFiles.forEach((filamentFile) => {
-      copyFileSync(
-        path.join(packagePath, 'filaments', filamentFile),
-        path.join(slicerPath.toString(), 'filament', filamentFile),
-      );
-    });
+    if (existsSync(path.join(packagePath, 'filaments'))) {
+      for (const filamentFile of filamentFiles) {
+        const filamentWritePath = path.join(slicerPath.toString(), 'filament', filamentFile);
+        installedManifest.ownedFiles.push(
+          filamentWritePath.replace(slicerPath.toString() + '/', ''),
+        );
+        copyFileSync(path.join(packagePath, 'filaments', filamentFile), filamentWritePath);
+      }
+    }
+
+    // Write installedManifest to .pspm.json
+    pspmConfig.installed.push(installedManifest);
+
+    writeFileSync(pspmPath, JSON.stringify(pspmConfig));
   }
 }

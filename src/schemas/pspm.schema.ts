@@ -11,3 +11,7 @@ export const pspmSchema = z.object({
 export const pspmRecordSchema = pspmSchema.extend({
   ownedFiles: z.array(z.string()),
 });
+
+export const pspmConfigSchema = z.object({
+  installed: z.array(pspmRecordSchema),
+});
